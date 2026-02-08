@@ -28,7 +28,9 @@ clean:
 
 .PHONY: qemu
 qemu:  floppy
-	qemu-system-$(ARCH) -drive file=$(FLOPPY),format=raw,if=floppy,media=disk
+	qemu-system-$(ARCH) -drive file=$(FLOPPY),format=raw,if=floppy,media=disk \
+		-audiodev pa,id=audio0 \
+		-machine pc,pcspk-audiodev=audio0
 
 .PHONY: bootloader
 bootloader:
