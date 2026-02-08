@@ -6,7 +6,7 @@ BITS 16
 
 START: EQU 1
 COUNT: EQU 59
-ADDR: EQU 0x500
+ADDR:  EQU 0x500
 
 JMP SHORT _start
 NOP
@@ -82,11 +82,8 @@ NoIncSegment:
 	JB LoadLoop
 
 	;; Loaded!
-	MOV AH, 0x0E
-	MOV AL, 'O'
-	INT 0x10
-	MOV AL, 'K'
-	INT 0x10
+	MOV DL, [Drive]
+	JMP (ADDR >> 4):(ADDR & 0x0F)
 
 	JMP Halt
 
