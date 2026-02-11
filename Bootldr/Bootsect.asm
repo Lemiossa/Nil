@@ -4,9 +4,12 @@ ORG 0x7C00
 SECTION .text
 BITS 16
 
-START: EQU 1
-COUNT: EQU 59
-ADDR:  EQU 0x500
+%define START 1
+%define COUNT  59
+
+%ifndef ADDR
+%define ADDR 0x500
+%endif
 
 JMP SHORT _start
 NOP
@@ -31,11 +34,15 @@ _start:
 	AND CL, 0x3F
 	INC DH
 
-	MOV [SectorsPerTrack], CL
-	MOV [Heads], DH
+	MOV BYTE [SectorsPerTrack], CL
+	MOV BYTE [Heads], DH
 
 	MOV SI, StartMessage
 	CALL PrintString
+
+	MOV AX, (ADDR & 0xFFFF)
+	MOV DX, ((ADDR >> 16) & 0xFFFF)
+	CALL PrintHexDword
 
 	MOV AX, (ADDR >> 4)
 	MOV ES, AX
@@ -144,10 +151,40 @@ PrintHexNibble:
 PrintHexByte:
 	PUSH AX
 	;; High nibble
-	MOV AL, AH
+	SHR AL, 4
 	CALL PrintHexNibble
+	POP AX
 	;; Low nibble
 	CALL PrintHexNibble
+	RET
+
+;; Print a hex word in AX
+;; Little-endian
+PrintHexWord:
+	PUSH AX
+	PUSH AX
+	;; High Byte
+	MOV AL, AH
+	CALL PrintHexByte
+	POP AX
+	;; Low Byte
+	CALL PrintHexByte
+	POP AX
+	RET
+
+;; Print a hex dword in DX:AX
+;; Little-endian
+PrintHexDword:
+	PUSH AX
+	PUSH DX
+	PUSH AX
+	;; High Word
+	MOV AX, DX
+	CALL PrintHexWord
+	POP AX
+	;; Low Word
+	CALL PrintHexWord
+	POP DX
 	POP AX
 	RET
 
@@ -162,17 +199,15 @@ LBAToCHS:
 	;; Cylinder   = (LBA / SectorsPerTrack) / Heads
 	;; Head       = (LBA / SectorsPerTrack) % Heads
 	;; Sector     = (LBA % SectorsPerTrack) + 1
-	MOV BX, [SectorsPerTrack]
-	DIV BX
+	DIV WORD [SectorsPerTrack]
 	;; AX = LBA / SectorsPerTrack
 	;; DX = LBA % SectorsPerTrack
+
 	INC DL ;; Sector + 1
 	MOV CL, DL
 
 	XOR DX, DX
-	XOR BX, BX
-	MOV BL, [Heads]
-	DIV BX
+	DIV WORD [Heads]
 	;; AX = (LBA / SectorsPerTrack) / Heads
 	;; DX = (LBA / SectorsPerTrack) % Heads
 	MOV DH, DL
@@ -209,12 +244,12 @@ ReadSector:
 	RET
 
 Drive: DB 0
-StartMessage: DB 'Loading', 0x00
+StartMessage: DB 'Loading in 0x', 0x00
 ErrorMessage: DB 0x0D, 0x0A, 0x07, '!! Load error !!', 0x0D, 0x0A, 0x00
 ErrorCodeMessage: DB 'Error Code: 0x', 0x00
 
-Heads: DB 2
-SectorsPerTrack: DB 18
+Heads: DW 2
+SectorsPerTrack: DW 18
 
 TIMES 510 - ($ - $$) DB 0
 DW 0x55AA
