@@ -67,7 +67,7 @@ char ToLower(char c)
 void Puts(char *s)
 {
 	while (*s)
-		BiosPutc(*s++);
+		BIOSPutc(*s++);
 }
 
 // Print formated string
@@ -144,7 +144,7 @@ int PrintF(char *fmt, ...)
 				num = VaArg(args, Uint16);
 				base = 2;
 			} else if (*fmt == 'c') {
-				BiosPutc((char)VaArg(args, char));
+				BIOSPutc((char)VaArg(args, char));
 				fmt++;
 				count++;
 				continue;
@@ -156,7 +156,7 @@ int PrintF(char *fmt, ...)
 				if (!negPad) {
 					int i = 0;
 					for (i = 0; i < pad; i++) {
-						BiosPutc(' ');
+						BIOSPutc(' ');
 						count++;
 					}
 				}
@@ -167,15 +167,16 @@ int PrintF(char *fmt, ...)
 					strLen = 6;
 				} else {
 					while (*str) {
-						BiosPutc(*str++);
+						BIOSPutc(*str++);
 						count++;
+						strLen++;
 					}
 				}
 
 				if (negPad) {
 					int i = 0;
 					for (i = 0; i < pad - strLen; i++) {
-						BiosPutc(' ');
+						BIOSPutc(' ');
 						count++;
 					}
 				}
@@ -203,7 +204,7 @@ int PrintF(char *fmt, ...)
 			bufLen = bufIdx;
 
 			if (neg) {
-				BiosPutc('-');
+				BIOSPutc('-');
 				count++;
 			}
 
@@ -211,25 +212,25 @@ int PrintF(char *fmt, ...)
 				int i = 0;
 				char c = zeroPad?'0':' ';
 				for (i = 0; i < pad - bufLen; i++) {
-					BiosPutc(c);
+					BIOSPutc(c);
 					count++;
 				}
 			}
 
 			while (bufIdx-- > 0) {
-				BiosPutc(buf[bufIdx]);
+				BIOSPutc(buf[bufIdx]);
 				count++;
 			}
 
 			if (negPad) {
 				int i = 0;
 				for (i = 0; i < pad - bufLen; i++) {
-					BiosPutc(' ');
+					BIOSPutc(' ');
 					count++;
 				}
 			}
 		} else {
-			BiosPutc(*fmt++);
+			BIOSPutc(*fmt++);
 			count++;
 		}
 	}
@@ -267,7 +268,7 @@ Uint8 DiskRead(void *d, Uint16 lba, Uint8 n, Uint8 drive)
 	int i = 0;
 	Uint16 c = 0;
 
-	BiosDiskGetParameters(drive, &hds, &spt);
+	BIOSDiskGetParameters(drive, &hds, &spt);
 	if (hds == 0 || spt == 0)
 		return 0x11;
 
@@ -276,13 +277,71 @@ Uint8 DiskRead(void *d, Uint16 lba, Uint8 n, Uint8 drive)
 	c = (lba / spt) / hds;
 
 	for (i = 0; i < 3; i++) {
-		ret = BiosDiskRead(drive, c, h, s, n, GetCurrentDS(), (Uint16)d);
+		ret = BIOSDiskRead(drive, c, h, s, n, GetCurrentDS(), (Uint16)d);
 
 		if (ret == 0)
 			return 0;
 
-		BiosDiskReset(drive);
+		BIOSDiskReset(drive);
 	}
 
 	return ret;
+}
+
+// Get string from keyboard input using BIOS
+void Gets(char *out, int max) {
+	int pos = 0;
+	if (!out)
+		return;
+
+	while (1) {
+		char c;
+		while (!BIOSKeyboardCheck());
+		c = BIOSGetKeyboardKey();
+
+		if (c == '\r') {
+			PrintF("\r\n");
+			out[pos] = 0;
+			return;
+		} else if (c == '\b' && pos > 0) {
+			PrintF("\b \b");
+			pos--;
+		} else if (c >= 32 && c <= 126) {
+			BIOSPutc(c);
+			out[pos++] = c;
+		}
+	}
+}
+
+// Copy path part(starting of 0) to OUT
+// Return non zero if have error
+int PathGetPart(char *path, int part, char *out, int maxOut)
+{
+	int curPart = 0;
+	if (!path)
+		return 1;
+
+	if (*path == '/')
+		path++;
+
+	while (*path && curPart != part) {
+		if (*path == '/') {
+			path++;
+			curPart++;
+			continue;
+		}
+
+		path++;
+	}
+
+	if (curPart == part) {
+		int outIdx = 0;
+		while (*path != '/' && outIdx < maxOut) {
+			out[outIdx++] = *path++;
+		}
+	} else {
+		return 1;
+	}
+
+	return 0;
 }

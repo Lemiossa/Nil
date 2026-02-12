@@ -27,6 +27,8 @@ int PrintF(char *fmt, ...);
 void PutPixel(Uint16 x, Uint16 y, Uint8 c);
 Uint8 GetPixel(Uint16 x, Uint16 y);
 Uint8 DiskRead(void *d, Uint16 lba, Uint8 n, Uint8 drive);
+void Gets(char *out, int max);
+int PathGetPart(char *path, int part, char *out, int maxOut);
 
 #endif // UTIL_H
 

@@ -7,6 +7,7 @@ BUILDDIR := $(CURDIR)/Build
 BINDIR := $(BUILDDIR)/Bin
 OBJDIR := $(BUILDDIR)/Obj
 DEPDIR := $(BUILDDIR)/Dep
+ROOTDIR := $(BUILDDIR)/Root
 
 BOOTLOADER := $(BINDIR)/Bootldr.bin
 FLOPPY := ./Nil_$(ARCH).flp
@@ -47,11 +48,16 @@ bootloader:
 .PHONY: floppy
 floppy: $(FLOPPY)
 
-$(FLOPPY): bootloader
+.PHONY: sysroot
+sysroot:
+	mkdir -p $(ROOTDIR)
+	mkdir -p $(ROOTDIR)/anydir
+	printf "Hello World\r\n" > $(ROOTDIR)/anydir/text.txt
+
+$(FLOPPY): bootloader sysroot
 	truncate -s 1440K $@
 	/sbin/mkfs.fat -F 12 -n "NIL" -R 64 $@
 	dd if=$(BOOTLOADER) of=$@ bs=1 count=3 conv=notrunc
 	dd if=$(BOOTLOADER) of=$@ bs=1 seek=62 skip=62 count=448 conv=notrunc
 	dd if=$(BOOTLOADER) of=$@ bs=1 seek=512 skip=512 conv=notrunc
-	printf "Hello World\r\n" > text.txt
-	mcopy -i $(FLOPPY) text.txt "::/"
+	mcopy -i $(FLOPPY) -s $(ROOTDIR)/* "::/"

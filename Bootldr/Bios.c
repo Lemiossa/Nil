@@ -7,7 +7,7 @@
 #include "Util.h"
 
 // Print a char using BIOS
-void BiosPutc(char c)
+void BIOSPutc(char c)
 {
 	union Regs r;
 	Memset(&r, 0, sizeof(union Regs));
@@ -16,12 +16,12 @@ void BiosPutc(char c)
 	Intx(0x10, &r);
 	r.b.ah = 0x01;
 	r.b.al = c;
-	r.w.dx = 0x00;
+	r.w.dx = 0;
 	Intx(0x14, &r);
 }
 
 // Sets video mode using BIOS
-void BiosSetVideoMode(Uint8 mode)
+void BIOSSetVideoMode(Uint8 mode)
 {
 	union Regs r;
 	Memset(&r, 0, sizeof(union Regs));
@@ -31,7 +31,7 @@ void BiosSetVideoMode(Uint8 mode)
 }
 
 // Reset drive using BIOS
-void BiosDiskReset(Uint8 drive)
+void BIOSDiskReset(Uint8 drive)
 {
 	union Regs r;
 	Memset(&r, 0, sizeof(union Regs));
@@ -40,8 +40,26 @@ void BiosDiskReset(Uint8 drive)
 	Intx(0x13, &r);
 }
 
+// Get keyboard key(ascii) using BIOS
+char BIOSGetKeyboardKey(void) {
+	union Regs r;
+	Memset(&r, 0, sizeof(union Regs));
+	r.b.ah = 0x00;
+	Intx(0x16, &r);
+	return r.b.al;
+}
+
+// Check if have key using BIOS
+char BIOSKeyboardCheck(void) {
+	union Regs r;
+	Memset(&r, 0, sizeof(union Regs));
+	r.b.ah = 0x01;
+	Intx(0x16, &r);
+	return !(r.w.flags & FLAG_ZF); // ZF if no keystroke
+}
+
 // Get disk parameters using BIOS
-void BiosDiskGetParameters(Uint8 drive, Uint8 *hds, Uint8 *spt)
+void BIOSDiskGetParameters(Uint8 drive, Uint8 *hds, Uint8 *spt)
 {
 	union Regs r;
 	Memset(&r, 0, sizeof(union Regs));
@@ -55,7 +73,7 @@ void BiosDiskGetParameters(Uint8 drive, Uint8 *hds, Uint8 *spt)
 }
 
 // Read N sectors from disk using BIOS
-Uint8 BiosDiskRead(Uint8 drive, Uint16 c, Uint8 h, Uint8 s, Uint8 n, Uint16 seg, Uint16 off)
+Uint8 BIOSDiskRead(Uint8 drive, Uint16 c, Uint8 h, Uint8 s, Uint8 n, Uint16 seg, Uint16 off)
 {
 	union Regs r;
 	Memset(&r, 0, sizeof(union Regs));

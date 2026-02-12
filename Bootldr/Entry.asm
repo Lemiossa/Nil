@@ -30,7 +30,9 @@ _start:
 ;;    unsigned short di;
 ;;    unsigned short si;
 ;;    unsigned short es;
+;;    unsigned short flags;
 ;; };
+;; NOTE: Flags is read-only
 ;; void Intx(unsigned char c, struct Regs *r);
 GLOBAL _Intx
 _Intx:
@@ -55,6 +57,7 @@ _Intx:
 	;; SI+10 = DI
 	;; SI+12 = SI
 	;; SI+14 = ES
+	;; SI+16 = FLAGS
 
 	MOV SI, [BP+6]
 	PUSH WORD [SI+0]  ;; AX
@@ -86,9 +89,11 @@ _Intx:
 	PUSH DI
 	PUSH SI
 	PUSH ES
+	PUSHF
 
 	MOV BP, [.BP]
 	MOV SI, [BP+6]
+	POP WORD [SI+16] ;; FLAGS
 	POP WORD [SI+14] ;; ES
 	POP WORD [SI+12] ;; SI
 	POP WORD [SI+10] ;; DI
@@ -211,6 +216,6 @@ _Drive: DB 0
 
 SECTION .bss
 StackBottom:
-	RESB 8192
+	RESB 4096
 StackTop:
 

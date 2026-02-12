@@ -9,8 +9,8 @@ typedef unsigned char Uint8;
 typedef char Int8;
 typedef unsigned short Uint16;
 typedef short Int16;
-typedef unsigned long Uint32;
-typedef long Int32;
+typedef unsigned long int Uint32;
+typedef long int Int32;
 
 #define NULL ((void *)0)
 

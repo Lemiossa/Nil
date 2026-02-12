@@ -46,6 +46,14 @@ struct FatEntry {
 	Uint16 FileSizeHigh;
 };
 
+#define FAT_READ_ONLY 0x01
+#define FAT_HIDDEN 0x02
+#define FAT_SYSTEM 0x04
+#define FAT_VOLUME_ID 0x08
+#define FAT_DIRECTORY 0x10
+#define FAT_ARCHIVE 0x20
+// FUCK YOU, LFN!
+
 struct FatBpb Bpb;
 
 
@@ -237,7 +245,7 @@ int FATReadDir(Uint16 cluster, struct FatEntry *out, Uint16 index)
 	if (GFatType == 0)
 		return 1;
 
-	if (curCluster == 0 && !(GFatType == 12 || GFatType == 16))
+	if (curCluster < 2 && !(GFatType == 12 || GFatType == 16))
 		return 1;
 
 	while (!FATClusterEnd(curCluster)) {
@@ -296,7 +304,7 @@ end:
 // Find entry in FAT dir
 // If cluster == 0: Read root dir
 // Return non zero if have error
-int FATReadFindInDir(Uint16 cluster, char *filename, struct FatEntry *out)
+int FATFindInDir(Uint16 cluster, char *filename, struct FatEntry *out)
 {
 	Uint16 index = 0;
 	char fatName[11];
@@ -304,8 +312,7 @@ int FATReadFindInDir(Uint16 cluster, char *filename, struct FatEntry *out)
 	if (!filename)
 		return 1;
 
-	if (cluster == 0 && !(GFatType == 12 || GFatType == 16))
-		return 1;
+	Memset(fatName, 0, 11);
 
 	FATFilenameToFATName(filename, fatName);
 
@@ -326,32 +333,35 @@ int FATReadFindInDir(Uint16 cluster, char *filename, struct FatEntry *out)
 	return 1; // Not found
 }
 
-// List root dir
-void FATListRoot(void)
-{
-	struct FatEntry entry;
-	Uint16 index = 0;
+// Find entry in complete path
+// Return non zero if have error
+int FATFind(char *path, struct FatEntry *out) {
+	char partStr[12];
+	int curPart = 0;
+	Uint16 curCluster = 0;
+	if (!path)
+		return 1;
 
 	while (1) {
-		int i = 0;
-		Uint8 hour, min, sec;
-		Uint16 year;
-		Uint8 month, day;
-		if (FATReadDir(0, &entry, index) != 0)
+		struct FatEntry entry;
+		Memset(partStr, 0, 12);
+		if (PathGetPart(path, curPart++, partStr, 12) != 0)
 			break;
 
-		for (i = 0; i < 11; i++) {
-			BiosPutc(entry.Name[i]);
+		if (FATFindInDir(curCluster, partStr, &entry) != 0)
+			break;
+
+		if (entry.Attr & FAT_DIRECTORY) {
+			curCluster = entry.ClusterLow;
+			continue;
 		}
 
-		FATTimeToNormalTime(entry.CTime, &hour, &min, &sec);
-		FATDateToNormalDate(entry.CDate, &year, &month, &day);
-		PrintF(" %02u:%02u:%02u %02u/%02u/%04u", hour, min, sec, month, day, year);
-
-		Puts("\r\n");
-
-		index++;
+		if (out)
+			Memcpy(out, &entry, sizeof(struct FatEntry));
+		return 0;
 	}
+
+	return 1; // Not found
 }
 
 // Main function
@@ -364,8 +374,9 @@ void Main(void)
 	else
 		Puts("Initilized FAT system!\r\n");
 
-    Puts("Root Dir:\r\n");
-    FATListRoot();
+	if (FATFind("/anydir/text.txt", &entry) == 0) {
+		PrintF("Found /anydir/text.txt!\r\n");
+	}
 
 	while (1);
 }
